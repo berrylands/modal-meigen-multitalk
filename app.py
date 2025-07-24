@@ -29,7 +29,6 @@ multitalk_image = (
     volumes={MODEL_PATH: model_volume},
     timeout=600,  # 10 minutes timeout
     secrets=[
-        modal.Secret.from_name("huggingface-secret"),
         modal.Secret.from_name("aws-secret")
     ]
 )
@@ -67,7 +66,6 @@ class MultiTalkModel:
 @app.function(
     image=multitalk_image,
     secrets=[
-        modal.Secret.from_name("huggingface-secret"),
         modal.Secret.from_name("aws-secret")
     ],
 )

@@ -1,6 +1,23 @@
 """Simple Modal test without secrets."""
 
 import modal
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Set Modal token if available
+if "MODAL_API_TOKEN" in os.environ:
+    # Modal API tokens are in format "id:secret"
+    if ":" in os.environ["MODAL_API_TOKEN"]:
+        parts = os.environ["MODAL_API_TOKEN"].split(":")
+        if len(parts) == 2:
+            os.environ["MODAL_TOKEN_ID"] = parts[0]
+            os.environ["MODAL_TOKEN_SECRET"] = parts[1]
+    else:
+        # If it's a single token, use it as the secret
+        os.environ["MODAL_AUTH_TOKEN"] = os.environ["MODAL_API_TOKEN"]
 
 app = modal.App("test-simple")
 
