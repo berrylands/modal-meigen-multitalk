@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.env
+
+# Modal
+.modal/
+modal_meta.json
+
+# Models
+models/
+*.pth
+*.pt
+*.safetensors
+*.ckpt
+
+# Data
+data/
+output/
+*.mp4
+*.wav
+*.mp3
+*.png
+*.jpg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Claude
+.claude/
