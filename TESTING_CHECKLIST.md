@@ -2,51 +2,41 @@
 
 Follow these steps to test the Modal setup:
 
-## 1. Modal Authentication
-- [ ] Run `modal setup`
-- [ ] Complete browser authentication
-- [ ] Verify token is saved (should see success message)
+## 1. Quick Setup Check
+- [ ] Run `python verify_setup.py`
+- [ ] Verify Modal SDK is installed
+- [ ] Check for authentication status
 
-## 2. Basic Connectivity Test
+## 2. Modal Authentication (if needed)
+- [ ] Set MODAL_API_TOKEN in .env file
+- [ ] OR run `modal setup` for interactive auth
+
+## 3. Basic Connectivity Test
 - [ ] Run `python test_simple.py`
-- [ ] Should see: `✅ Success: Hello from Modal!`
-- [ ] If error, check authentication
+- [ ] Should see connection success message
 
-## 3. Create Secrets (Optional)
-### Option A: Modal Dashboard
-- [ ] Go to https://modal.com/settings/secrets
-- [ ] Create `huggingface-secret`:
-  - HUGGINGFACE_TOKEN=your_token
-- [ ] Create `aws-secret`:
-  - AWS_ACCESS_KEY_ID=your_key
-  - AWS_SECRET_ACCESS_KEY=your_secret
-  - AWS_REGION=eu-west-1
-
-### Option B: CLI
+## 4. Create/Update Secrets
+### Using the helper script:
 ```bash
-modal secret create huggingface-secret HUGGINGFACE_TOKEN=your_token
-modal secret create aws-secret AWS_ACCESS_KEY_ID=key AWS_SECRET_ACCESS_KEY=secret AWS_REGION=eu-west-1
+./create_secrets.sh
 ```
 
-## 4. Full Test Suite
-- [ ] Run `python test_modal.py`
-- [ ] Check all tests pass:
-  - Basic function: ✓
-  - Secrets access: ✓ (or ✗ if not created)
-  - GPU access: Should show GPU info
+### Or manually via Modal Dashboard:
+- [ ] Go to https://modal.com/settings/secrets
+- [ ] Create `huggingface-secret` with HF_TOKEN
+- [ ] Create `aws-secret` with AWS credentials
 
-## 5. Deploy Test Function
-- [ ] Run `modal deploy test_simple.py`
-- [ ] Check Modal dashboard for deployed function
-- [ ] Note the function URL
+## 5. Complete Environment Test
+- [ ] Run `python test_complete_setup.py`
+- [ ] Verify all systems:
+  - AWS S3 access
+  - HuggingFace authentication
+  - Modal connection
 
 ## 6. Main App Test
-- [ ] Run `python app.py`
+- [ ] Run `modal run app.py`
 - [ ] Should see health check results
 - [ ] Should see model download function status
-
-## 7. Clean Up (Optional)
-- [ ] Remove test deployment: `modal app stop test-simple`
 
 ## Troubleshooting
 
