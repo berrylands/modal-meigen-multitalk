@@ -5,9 +5,12 @@ This module provides serverless video generation using the MeiGen-MultiTalk mode
 """
 
 import modal
-from modal import App, Image, Volume, method
+from modal import App, Volume, method
 import os
 from pathlib import Path
+
+# Import our simplified image definition
+from modal_image_simplified import multitalk_image
 
 # Define the Modal app
 app = App("meigen-multitalk")
@@ -15,13 +18,6 @@ app = App("meigen-multitalk")
 # Define the volume for model storage
 model_volume = Volume.from_name("multitalk-models", create_if_missing=True)
 MODEL_PATH = "/models"
-
-# Create custom image with dependencies
-multitalk_image = (
-    Image.debian_slim(python_version="3.10")
-    .pip_install_from_requirements("requirements.txt")
-    .apt_install(["ffmpeg", "libsm6", "libxext6", "libxrender-dev", "libgomp1"])
-)
 
 @app.cls(
     image=multitalk_image,
@@ -88,18 +84,14 @@ def health_check():
     """Simple health check endpoint."""
     return {"status": "healthy", "service": "meigen-multitalk"}
 
-@app.local_entrypoint()
-def main():
-    """Local testing entrypoint."""
+if __name__ == "__main__":
     print("Modal MeiGen-MultiTalk is ready!")
     
-    # Test health check
-    result = health_check.remote()
-    print(f"Health check: {result}")
-    
-    # Test model download function
-    download_result = download_models.remote()
-    print(f"Model download: {download_result}")
-
-if __name__ == "__main__":
-    main()
+    with app.run():
+        # Test health check
+        result = health_check.remote()
+        print(f"Health check: {result}")
+        
+        # Test model download function
+        download_result = download_models.remote()
+        print(f"Model download: {download_result}")
