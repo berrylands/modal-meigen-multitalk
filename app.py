@@ -5,12 +5,12 @@ This module provides serverless video generation using the MeiGen-MultiTalk mode
 """
 
 import modal
-from modal import Image, Stub, Volume, method
+from modal import App, Image, Volume, method
 import os
 from pathlib import Path
 
-# Define the Modal stub
-stub = Stub("meigen-multitalk")
+# Define the Modal app
+app = App("meigen-multitalk")
 
 # Define the volume for model storage
 model_volume = Volume.from_name("multitalk-models", create_if_missing=True)
@@ -23,11 +23,15 @@ multitalk_image = (
     .apt_install(["ffmpeg", "libsm6", "libxext6", "libxrender-dev", "libgomp1"])
 )
 
-@stub.cls(
+@app.cls(
     image=multitalk_image,
     gpu="a10g",  # or "a100" for larger workloads
     volumes={MODEL_PATH: model_volume},
     timeout=600,  # 10 minutes timeout
+    secrets=[
+        modal.Secret.from_name("huggingface-secret"),
+        modal.Secret.from_name("aws-secret")
+    ]
 )
 class MultiTalkModel:
     def __init__(self):
@@ -60,20 +64,38 @@ class MultiTalkModel:
         # Video generation will be implemented here
         raise NotImplementedError("Video generation not yet implemented")
 
-@stub.function(
+@app.function(
     image=multitalk_image,
-    secrets=[modal.Secret.from_name("multitalk-secrets")],
+    secrets=[
+        modal.Secret.from_name("huggingface-secret"),
+        modal.Secret.from_name("aws-secret")
+    ],
 )
 def download_models():
     """Download and prepare model weights."""
     # Model download logic will be implemented here
-    pass
+    import os
+    print(f"HuggingFace token available: {'HUGGINGFACE_TOKEN' in os.environ}")
+    print(f"AWS credentials available: {'AWS_ACCESS_KEY_ID' in os.environ}")
+    return "Model download function ready"
 
-@stub.local_entrypoint()
+@app.function()
+def health_check():
+    """Simple health check endpoint."""
+    return {"status": "healthy", "service": "meigen-multitalk"}
+
+@app.local_entrypoint()
 def main():
     """Local testing entrypoint."""
     print("Modal MeiGen-MultiTalk is ready!")
-    # Add local testing code here
+    
+    # Test health check
+    result = health_check.remote()
+    print(f"Health check: {result}")
+    
+    # Test model download function
+    download_result = download_models.remote()
+    print(f"Model download: {download_result}")
 
 if __name__ == "__main__":
     main()

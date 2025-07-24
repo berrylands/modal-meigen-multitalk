@@ -8,10 +8,12 @@ env/
 venv/
 ENV/
 .env
+.env.local
 
 # Modal
 .modal/
 modal_meta.json
+.modal.toml
 
 # Models
 models/
