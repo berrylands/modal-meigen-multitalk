@@ -119,7 +119,7 @@ multitalk_image = (
     )
     # Set environment variables
     .env({
-        "PYTHONPATH": "/root/MultiTalk:$PYTHONPATH",
+        "PYTHONPATH": "/root/MultiTalk",
         "TORCH_CUDA_ARCH_LIST": "7.0;7.5;8.0;8.6;8.9;9.0",  # Support various GPU architectures
         "CUDA_VISIBLE_DEVICES": "0",
     })
@@ -182,7 +182,7 @@ multitalk_image_light = (
         "cd /root/MultiTalk && pip install -r requirements.txt",
     )
     .env({
-        "PYTHONPATH": "/root/MultiTalk:$PYTHONPATH",
+        "PYTHONPATH": "/root/MultiTalk",
         "TORCH_CUDA_ARCH_LIST": "7.0;7.5;8.0;8.6;8.9;9.0",
         "CUDA_VISIBLE_DEVICES": "0",
     })

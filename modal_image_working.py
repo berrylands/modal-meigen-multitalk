@@ -78,7 +78,7 @@ multitalk_image_working = (
     )
     # Environment variables
     .env({
-        "PYTHONPATH": "/root/MultiTalk:$PYTHONPATH",
+        "PYTHONPATH": "/root/MultiTalk",
         "TORCH_CUDA_ARCH_LIST": "7.0;7.5;8.0;8.6;8.9;9.0",
         "CUDA_VISIBLE_DEVICES": "0",
     })

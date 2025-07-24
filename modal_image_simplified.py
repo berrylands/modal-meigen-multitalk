@@ -29,7 +29,7 @@ multitalk_image = (
         "cd /root && git clone https://github.com/MeiGen-AI/MultiTalk.git",
     )
     .env({
-        "PYTHONPATH": "/root/MultiTalk:$PYTHONPATH",
+        "PYTHONPATH": "/root/MultiTalk",
     })
 )
 
