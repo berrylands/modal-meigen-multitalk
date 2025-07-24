@@ -29,6 +29,7 @@ multitalk_image = (
     volumes={MODEL_PATH: model_volume},
     timeout=600,  # 10 minutes timeout
     secrets=[
+        modal.Secret.from_name("huggingface-secret"),
         modal.Secret.from_name("aws-secret")
     ]
 )
@@ -66,6 +67,7 @@ class MultiTalkModel:
 @app.function(
     image=multitalk_image,
     secrets=[
+        modal.Secret.from_name("huggingface-secret"),
         modal.Secret.from_name("aws-secret")
     ],
 )
@@ -73,7 +75,11 @@ def download_models():
     """Download and prepare model weights."""
     # Model download logic will be implemented here
     import os
-    print(f"HuggingFace token available: {'HUGGINGFACE_TOKEN' in os.environ}")
+    # Check for HF token (might be HF_TOKEN or HUGGINGFACE_TOKEN)
+    hf_available = any(key in os.environ for key in ["HF_TOKEN", "HUGGINGFACE_TOKEN"])
+    print(f"HuggingFace token available: {hf_available}")
+    if "HF_TOKEN" in os.environ:
+        print(f"  Found as HF_TOKEN (length: {len(os.environ['HF_TOKEN'])})")
     print(f"AWS credentials available: {'AWS_ACCESS_KEY_ID' in os.environ}")
     return "Model download function ready"
 

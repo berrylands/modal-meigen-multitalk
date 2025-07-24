@@ -38,19 +38,32 @@ The Modal environment is fully configured and working:
 
 ## Pending Items
 
-1. **HuggingFace Secret**: Not yet created (optional for now)
+1. **HuggingFace Secret**: Created but token appears invalid (401 error)
+   - Token exists as `HF_TOKEN` in Modal secrets
+   - May need to be regenerated or checked for validity
 2. **Full Deployment**: Main app not yet deployed (building dependencies)
 
 ## Test Results
 
+### AWS Secret Test (Working)
 ```bash
-# AWS Secret Test Output
 AWS_ACCESS_KEY_ID exists: True
 AWS_SECRET_ACCESS_KEY exists: True
 AWS_REGION: eu-west-1
 Key prefix: AKIA...
 ✅ S3 Access successful! Found 310 buckets
 ```
+
+### HuggingFace Secret Test (Needs Attention)
+```bash
+✅ Token found as: HF_TOKEN
+Token length: 37 characters
+Token prefix: hf_LSiBI...
+❌ HF API Access: Failed with status 401
+Response: {"error":"Invalid credentials in Authorization header"}
+```
+
+Note: The HuggingFace token exists but appears to be invalid or expired. This won't block basic Modal functionality but will be needed for model downloads.
 
 ## Next Steps
 
