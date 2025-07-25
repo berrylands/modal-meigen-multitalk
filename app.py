@@ -9,8 +9,8 @@ from modal import App, Volume, method
 import os
 from pathlib import Path
 
-# Import our simplified image definition
-from modal_image_simplified import multitalk_image
+# Import our production image definition
+from modal_image_production import multitalk_image
 
 # Define the Modal app
 app = App("meigen-multitalk")
