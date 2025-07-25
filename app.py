@@ -9,8 +9,9 @@ from modal import App, Volume, method
 import os
 from pathlib import Path
 
-# Import our production image definition (Colab-matched versions)
-from modal_image_production_final import multitalk_image_no_flash as multitalk_image
+# Import our experimental image definition (NOT PRODUCTION TESTED)
+# TODO: This needs full end-to-end testing before using in production
+from modal_image_experimental import multitalk_image_no_flash as multitalk_image
 
 # Define the Modal app
 app = App("meigen-multitalk")
