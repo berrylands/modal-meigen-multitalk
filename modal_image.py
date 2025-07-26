@@ -116,6 +116,7 @@ multitalk_image = (
         "tqdm",
         "scipy",
         "soundfile",
+        "misaki[en]",  # G2P engine for TTS (English support)
     )
     # Set environment variables
     .env({
@@ -176,6 +177,7 @@ multitalk_image_light = (
         "tqdm",
         "scipy",
         "soundfile",
+        "misaki[en]",  # G2P engine for TTS (English support)
     )
     .run_commands(
         "cd /root && git clone https://github.com/MeiGen-AI/MultiTalk.git",

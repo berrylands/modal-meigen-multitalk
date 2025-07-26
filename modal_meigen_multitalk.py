@@ -42,6 +42,12 @@ multitalk_image = (
         "einops",
         "omegaconf",
         "tqdm",
+        "misaki[en]",  # G2P engine for TTS (English support)
+        "optimum-quanto==0.2.6",  # Additional MultiTalk deps
+        "easydict",
+        "ftfy",
+        "pyloudnorm",
+        "scikit-image",
     )
     .run_commands(
         # Clone MultiTalk repo
@@ -127,8 +133,8 @@ def download_models():
     ],
 )
 def generate_video(
-    audio_path: str,
-    image_path: str, 
+    audio_data: bytes,
+    image_data: bytes, 
     prompt: str = "A person is speaking",
     sample_steps: int = 20,
     output_name: str = "output",
@@ -140,6 +146,16 @@ def generate_video(
     import subprocess
     
     sys.path.insert(0, "/root/MultiTalk")
+    
+    # Save uploaded files to temp locations
+    audio_path = "/tmp/input_audio.wav"
+    image_path = "/tmp/input_image.jpg"
+    
+    with open(audio_path, "wb") as f:
+        f.write(audio_data)
+    
+    with open(image_path, "wb") as f:
+        f.write(image_data)
     
     # GPU VRAM parameters from Colab
     GPU_VRAM_PARAMS = {
@@ -276,7 +292,13 @@ def main(
         print(f"  Image: {image_path}")
         print(f"  Prompt: {prompt}")
         
-        video_data = generate_video.remote(audio_path, image_path, prompt)
+        # Read files
+        with open(audio_path, "rb") as f:
+            audio_data = f.read()
+        with open(image_path, "rb") as f:
+            image_data = f.read()
+        
+        video_data = generate_video.remote(audio_data, image_data, prompt)
         
         # Save output
         output_path = "output_video.mp4"
