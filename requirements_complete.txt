@@ -1,0 +1,62 @@
+# Complete requirements for Modal MeiGen-MultiTalk
+# This file includes all dependencies discovered from the MultiTalk repository
+
+# Core ML dependencies
+torch==2.4.1
+torchvision==0.19.1
+torchaudio==2.4.1
+xformers==0.0.28
+
+# Transformers and related
+transformers==4.49.0
+tokenizers>=0.20.3
+accelerate>=1.1.1
+peft
+diffusers>=0.31.0
+
+# Audio processing
+librosa
+soundfile
+pyloudnorm
+misaki[en]  # G2P engine for TTS (English support)
+
+# Video processing
+opencv-python>=4.9.0.80
+moviepy
+imageio
+imageio-ffmpeg
+
+# Image processing
+Pillow
+scikit-image
+
+# Numerical computing
+numpy>=1.23.5,<2
+scipy
+numba==0.59.1
+einops
+
+# UI and API
+gradio>=5.0.0
+fastapi
+
+# Distributed computing
+xfuser>=0.4.1
+
+# Utilities
+huggingface_hub
+tqdm
+easydict
+ftfy
+dashscope
+loguru
+omegaconf
+psutil
+packaging
+boto3
+
+# Optimization
+optimum-quanto==0.2.6
+
+# Build tools
+ninja
