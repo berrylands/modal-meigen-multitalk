@@ -1,0 +1,47 @@
+# ML Dependencies for MeiGen-MultiTalk
+# Based on working Colab notebook configuration
+
+# Core ML frameworks - MUST match these versions
+torch==2.4.1
+torchvision==0.19.1
+torchaudio==2.4.1
+xformers==0.0.28
+flash-attn==2.6.1
+
+# CRITICAL: Must use pre-CVE version of transformers
+transformers==4.49.0
+peft
+accelerate
+
+# Audio/Video processing
+librosa>=0.10.0
+moviepy>=1.0.3
+opencv-python>=4.8.0
+soundfile>=0.12.0
+scipy>=1.10.0
+
+# Image processing
+Pillow>=10.0.0
+
+# Diffusion models
+diffusers>=0.30.0
+
+# IMPORTANT: NumPy/Numba compatibility
+numpy==1.26.4
+numba==0.59.1
+
+# Utilities
+huggingface-hub>=0.20.0
+tqdm>=4.65.0
+packaging
+psutil
+ninja
+
+# AWS integration (for S3)
+boto3>=1.28.0
+
+# Additional dependencies from MultiTalk requirements
+einops
+omegaconf
+imageio
+imageio-ffmpeg

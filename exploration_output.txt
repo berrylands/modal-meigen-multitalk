@@ -1,0 +1,262 @@
+[modal-client] 2025-07-25T10:27:43+0100 Created environment with id en-dX654UaS6a8MNkfw2lwjSi
+[modal-client] 2025-07-25T10:27:43+0100 Created new app with id ap-s4knpmZpdpLV6uyEbkkmE5
+✓ Initialized. View run at 
+https://modal.com/apps/berrylands/main/ap-s4knpmZpdpLV6uyEbkkmE5
+[modal-client] 2025-07-25T10:27:43+0100 Mounting /Users/jasonedge/CODEHOME/modal-meigen-multitalk/explore_multitalk.py as /root/explore_multitalk.py
+[modal-client] 2025-07-25T10:27:43+0100 Computing checksums for 1 files using 14 worker threads
+[modal-client] 2025-07-25T10:27:43+0100 get_upload_hashes took 0.000s (dict_keys(['sha256', 'md5']))
+[modal-client] 2025-07-25T10:27:43+0100 Uploaded 0 new files and 0 bytes in 0.20919087500078604s
+✓ Created objects.
+├── 🔨 Created mount 
+│   /Users/jasonedge/CODEHOME/modal-meigen-multitalk/explore_multitalk.py
+├── 🔨 Created function explore_multitalk_repo.
+└── 🔨 Created function check_missing_dependencies.
+Exploring MultiTalk repository...
+============================================================
+MultiTalk Repository Exploration
+============================================================
+
+✅ MultiTalk repo found at: /root/MultiTalk
+
+📁 Repository Structure:
+MultiTalk/
+  generate_multitalk.py
+  app.py
+  README.md
+  requirements.txt
+  LICENSE.txt
+  kokoro/
+    modules.py
+    custom_stft.py
+    istftnet.py
+    __main__.py
+    __init__.py
+    pipeline.py
+    model.py
+  wan/
+    wan_lora.py
+    multitalk.py
+    vace.py
+    image2video.py
+    first_last_frame2video.py
+    __init__.py
+    text2video.py
+    utils/
+      vace_processor.py
+      fm_solvers.py
+      qwen_vl_utils.py
+      prompt_extend.py
+      utils.py
+      multitalk_utils.py
+      fm_solvers_unipc.py
+      __init__.py
+    distributed/
+      __init__.py
+      xdit_context_parallel.py
+      fsdp.py
+    configs/
+      wan_i2v_14B.py
+      wan_multitalk_14B.py
+      wan_t2v_14B.py
+      wan_t2v_1_3B.py
+      __init__.py
+      shared_config.py
+    modules/
+      model.py
+      xlm_roberta.py
+      multitalk_model.py
+      vace_model.py
+      tokenizers.py
+      vae.py
+      attention.py
+      clip.py
+      __init__.py
+      t5.py
+  .git/
+    index
+    packed-refs
+    HEAD
+    config
+    description
+    objects/
+      pack/
+      info/
+    refs/
+      tags/
+      remotes/
+        origin/
+      heads/
+    logs/
+      HEAD
+      refs/
+        remotes/
+          origin/
+        heads/
+    info/
+      exclude
+    branches/
+    hooks/
+      post-update.sample
+      prepare-commit-msg.sample
+      fsmonitor-watchman.sample
+      pre-rebase.sample
+      push-to-checkout.sample
+      pre-merge-commit.sample
+      pre-commit.sample
+      commit-msg.sample
+      pre-applypatch.sample
+      applypatch-msg.sample
+      ... and 3 more files
+  src/
+    utils.py
+    vram_management/
+      layers.py
+      __init__.py
+    audio_analysis/
+      wav2vec2.py
+      torch_utils.py
+  examples/
+    single_example_1.json
+    multitalk_example_3.json
+    single_example_tts_1.json
+    multitalk_example_2.json
+    multitalk_example_tts_1.json
+    multitalk_example_1.json
+    multi/
+      2/
+      3/
+      1/
+    single/
+      single1.png
+      1.wav
+  assets/
+    none_quant_efficiency.png
+    efficiency.png
+    logo.png
+    pipe.png
+    logo2.jpeg
+  weights/
+    weight.txt
+
+📋 Requirements Files:
+
+  Found: requirements.txt
+  Content:
+  opencv-python>=4.9.0.80
+  diffusers>=0.31.0
+  transformers>=4.49.0
+  tokenizers>=0.20.3
+  accelerate>=1.1.1
+  tqdm
+  imageio
+  easydict
+  ftfy
+  dashscope
+  imageio-ffmpeg
+  scikit-image   
+  loguru
+  gradio>=5.0.0
+  numpy>=1.23.5,<2
+  xfuser>=0.4.1
+  pyloudnorm
+  optimum-quanto==0.2.6
+
+🔍 Searching for 'misaki' in the codebase:
+  Found mentions:
+  /root/MultiTalk/kokoro/pipeline.py:from misaki import en, espeak
+  /root/MultiTalk/kokoro/pipeline.py:    # pip install misaki[en]
+  /root/MultiTalk/kokoro/pipeline.py:    # pip install misaki[ja]
+  /root/MultiTalk/kokoro/pipeline.py:    # pip install misaki[zh]
+  /root/MultiTalk/kokoro/pipeline.py:                from misaki import ja
+  /root/MultiTalk/kokoro/pipeline.py:                logger.error("You need to `pip install misaki[ja]` to use lang_code='j'")
+  /root/MultiTalk/kokoro/pipeline.py:                from misaki import zh
+  /root/MultiTalk/kokoro/pipeline.py:                logger.error("You need to `pip install misaki[zh]` to use lang_code='z'")
+  /root/MultiTalk/README.md:pip install misaki[en]
+  
+
+📄 Checking kokoro/pipeline.py:
+  Found at: /root/MultiTalk/kokoro/pipeline.py
+  Import statements:
+    from .model import KModel
+    from dataclasses import dataclass
+    from huggingface_hub import hf_hub_download
+    from loguru import logger
+    from misaki import en, espeak
+    from typing import Callable, Generator, List, Optional, Tuple, Union
+    import re
+    import torch
+    import os
+                    from misaki import ja
+                    from misaki import zh
+
+📦 Custom Python modules in MultiTalk:
+
+🐍 Python modules (first 20):
+  app.py
+  generate_multitalk.py
+  kokoro/__init__.py
+  kokoro/__main__.py
+  kokoro/custom_stft.py
+  kokoro/istftnet.py
+  kokoro/model.py
+  kokoro/modules.py
+  kokoro/pipeline.py
+  src/audio_analysis/torch_utils.py
+  src/audio_analysis/wav2vec2.py
+  src/utils.py
+  src/vram_management/__init__.py
+  src/vram_management/layers.py
+  wan/__init__.py
+  wan/configs/__init__.py
+  wan/configs/shared_config.py
+  wan/configs/wan_i2v_14B.py
+  wan/configs/wan_multitalk_14B.py
+  wan/configs/wan_t2v_14B.py
+  ... and 28 more Python files
+
+Exploration result: {'status': 'complete', 'files_found': 48}
+
+============================================================
+Now checking missing dependencies...
+============================================================
+Checking Missing Dependencies
+============================================================
+
+🔍 Trying to import: kokoro
+  ❌ ImportError: No module named 'misaki'
+  🔍 Looking for misaki-related files...
+
+🔍 Trying to import: kokoro.pipeline
+  ❌ ImportError: No module named 'misaki'
+  🔍 Looking for misaki-related files...
+
+🔍 Trying to import: misaki
+  ❌ ImportError: No module named 'misaki'
+  🔍 Looking for misaki-related files...
+
+🔍 Trying to import: generate_multitalk
+  ❌ ImportError: No module named 'misaki'
+  🔍 Looking for misaki-related files...
+
+📋 Checking generate_multitalk.py requirements:
+  Error running generate_multitalk.py:
+  STDOUT: 
+  STDERR: Traceback (most recent call last):
+  File "/root/MultiTalk/generate_multitalk.py", line 23, in <module>
+    from kokoro import KPipeline
+  File "/root/MultiTalk/kokoro/__init__.py", line 23, in <module>
+    from .pipeline import KPipeline
+  File "/root/MultiTalk/kokoro/pipeline.py", line 5, in <module>
+    from misaki import en, espeak
+ModuleNotFoundError: No module named 'misaki'
+
+
+Dependency check result: {'status': 'complete'}
+[modal-client] 2025-07-25T10:28:12+0100 Sending app disconnect/stop request
+Stopping app - local entrypoint completed.
+[modal-client] 2025-07-25T10:28:12+0100 App disconnected
+[modal-client] 2025-07-25T10:28:15+0100 App logs are done
+[modal-client] 2025-07-25T10:28:15+0100 Logging exited gracefully
+✓ App completed. View run at 
+https://modal.com/apps/berrylands/main/ap-s4knpmZpdpLV6uyEbkkmE5
+[modal-client] 2025-07-25T10:28:15+0100 Client (4405026448): closing
