@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:modal.com)",
+      "Bash(git init:*)",
+      "Bash(mkdir:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(gh issue create:*)",
+      "Bash(git checkout:*)",
+      "Bash(pip install:*)",
+      "Bash(modal:*)",
+      "Bash(python test:*)",
+      "Bash(python:*)",
+      "Bash(chmod:*)",
+      "Bash(./run_test.sh:*)",
+      "Bash(./test_all.sh)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(git pull:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(tree:*)",
+      "Bash(echo:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(true)",
+      "Bash(env)",
+      "Bash(grep:*)",
+      "WebFetch(domain:huggingface.co)",
+      "mcp__remotion-documentation__remotion-documentation",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ],
+    "deny": []
+  }
+}
