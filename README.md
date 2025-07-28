@@ -11,11 +11,12 @@ This project provides a serverless API for audio-driven multi-person conversatio
 - 🎥 Audio-driven talking head video generation
 - 🚀 Serverless deployment with automatic scaling
 - 💰 Pay-per-use pricing (no idle costs)
-- 🎭 Support for single and multi-person scenarios
+- 🎭 Support for single and multi-person conversations (up to multiple speakers)
 - 🎨 Works with cartoon characters and singing
 - ⚡ GPU-accelerated inference with Flash Attention 2.6.1
 - ☁️ S3 integration for input/output storage
 - 🔧 CUDA 12.1 optimized environment
+- 🗣️ Label Rotary Position Embedding (L-RoPE) for correct speaker-audio binding
 
 ## Requirements
 
@@ -83,24 +84,42 @@ modal run app_multitalk_cuda.py --action test
 
 ### Generate Video with S3
 
-Generate a video using files from S3:
+#### Single Person Video
+Generate a single-person talking head video:
 
 ```bash
-modal run app_multitalk_cuda.py --action generate-s3 \
-  --bucket your-bucket-name \
-  --image-key path/to/image.png \
-  --audio-key path/to/audio.wav
+modal run app_multitalk_cuda.py
 ```
 
-### Generate Video with Local Files
-
-Generate a video using local files:
+#### Two-Person Conversation
+Generate a two-person conversation video:
 
 ```bash
-modal run app_multitalk_cuda.py --action generate \
-  --image-path /path/to/image.png \
-  --audio-path /path/to/audio.wav \
-  --prompt "A person is speaking"
+modal run app_multitalk_cuda.py --two-person
+```
+
+Note: For two-person mode, ensure you have both `1.wav` and `2.wav` in your S3 bucket.
+
+### Generate Video with Custom Parameters
+
+Use the Modal functions directly for more control:
+
+```python
+# Single person
+result = generate_video_cuda.remote(
+    prompt="A person speaking about technology",
+    image_key="portrait.png",
+    audio_key="speech.wav",
+    sample_steps=20
+)
+
+# Multiple people
+result = generate_multi_person_video.remote(
+    prompt="Two people having a conversation",
+    image_key="two_people.png",
+    audio_keys=["person1.wav", "person2.wav"],
+    sample_steps=20
+)
 ```
 
 ## Input Requirements
@@ -108,12 +127,18 @@ modal run app_multitalk_cuda.py --action generate \
 ### Images
 - **Resolution**: 896x448 pixels (exactly)
 - **Format**: PNG or JPG
-- **Content**: Portrait photo or character image
+- **Content**: 
+  - Single person: Portrait photo or character image
+  - Multiple people: Image containing all speakers
 
 ### Audio
 - **Format**: WAV file
 - **Sample Rate**: Any (automatically resampled to 16kHz)
 - **Duration**: Any length (frames calculated automatically)
+- **Multi-person**: 
+  - Provide separate audio files for each speaker
+  - Audio files are synchronized to longest duration
+  - Each speaker's audio is mapped to their position in the image
 
 ## Output
 
@@ -183,12 +208,50 @@ If you encounter OOM errors:
 
 For development setup and contributing guidelines, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
+## Multi-Person Conversation Examples
+
+### Two-Person Dialogue
+```python
+# Example: Interview scenario
+result = generate_multi_person_video.remote(
+    prompt="An interviewer and guest discussing artificial intelligence",
+    image_key="interview_scene.png",  # Image with two people
+    audio_keys=["interviewer.wav", "guest.wav"],
+    sample_steps=20
+)
+```
+
+### Three-Person Panel
+```python
+# Example: Panel discussion
+result = generate_multi_person_video.remote(
+    prompt="Three experts discussing climate change",
+    image_key="panel_discussion.png",  # Image with three people
+    audio_keys=["moderator.wav", "expert1.wav", "expert2.wav"],
+    sample_steps=20
+)
+```
+
+### JSON Input Format
+The system automatically creates the correct JSON format for MultiTalk:
+```json
+{
+  "prompt": "Two people having a conversation",
+  "cond_image": "input.png",
+  "cond_audio": {
+    "person1": "input_person1.wav",
+    "person2": "input_person2.wav"
+  }
+}
+```
+
 ## Files
 
-- `app_multitalk_cuda.py` - Main Modal application with Flash Attention support
+- `app_multitalk_cuda.py` - Main Modal application with Flash Attention and multi-person support
+- `app_multitalk_multi_person.py` - Standalone multi-person implementation
 - `s3_utils.py` - S3 integration utilities
 - `modal_image.py` - Image definition configurations
-- `debug_*.py` - Debugging and testing utilities
+- `MODAL_ML_LESSONS_LEARNED.md` - Detailed insights from the implementation journey
 
 ## License
 
