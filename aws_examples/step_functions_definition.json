@@ -1,0 +1,234 @@
+{
+  "Comment": "MeiGen-MultiTalk video generation workflow with Step Functions",
+  "StartAt": "ValidateInput",
+  "TimeoutSeconds": 3600,
+  "States": {
+    "ValidateInput": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT:function:validate-multitalk-input",
+      "ResultPath": "$.validation",
+      "Catch": [
+        {
+          "ErrorEquals": ["ValidationError"],
+          "Next": "ValidationFailed",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "CheckMediaExists"
+    },
+    
+    "ValidationFailed": {
+      "Type": "Fail",
+      "Error": "ValidationError",
+      "Cause": "Input validation failed"
+    },
+    
+    "CheckMediaExists": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT:function:check-s3-media",
+      "Parameters": {
+        "image_s3_url.$": "$.image_s3_url",
+        "audio_s3_urls.$": "$.audio_s3_urls"
+      },
+      "ResultPath": "$.mediaCheck",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["MediaNotFound"],
+          "Next": "MediaNotFoundError",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "SubmitVideoGeneration"
+    },
+    
+    "MediaNotFoundError": {
+      "Type": "Fail",
+      "Error": "MediaNotFound",
+      "Cause": "Required media files not found in S3"
+    },
+    
+    "SubmitVideoGeneration": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT:function:submit-multitalk-job",
+      "Parameters": {
+        "prompt.$": "$.prompt",
+        "image_s3_url.$": "$.image_s3_url",
+        "audio_s3_urls.$": "$.audio_s3_urls",
+        "output_s3_bucket.$": "$.output_s3_bucket",
+        "output_s3_prefix.$": "$.output_s3_prefix",
+        "options.$": "$.options"
+      },
+      "ResultPath": "$.jobSubmission",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "SubmissionFailed",
+          "ResultPath": "$.error"
+        }
+      ],
+      "Next": "WaitForProcessing"
+    },
+    
+    "SubmissionFailed": {
+      "Type": "Fail",
+      "Error": "SubmissionError",
+      "Cause": "Failed to submit video generation job"
+    },
+    
+    "WaitForProcessing": {
+      "Type": "Wait",
+      "Seconds": 30,
+      "Next": "CheckJobStatus"
+    },
+    
+    "CheckJobStatus": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT:function:check-multitalk-status",
+      "Parameters": {
+        "job_id.$": "$.jobSubmission.job_id"
+      },
+      "ResultPath": "$.jobStatus",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "EvaluateJobStatus"
+    },
+    
+    "EvaluateJobStatus": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.jobStatus.status",
+          "StringEquals": "completed",
+          "Next": "GetDownloadUrl"
+        },
+        {
+          "Variable": "$.jobStatus.status",
+          "StringEquals": "failed",
+          "Next": "JobFailed"
+        },
+        {
+          "Variable": "$.jobStatus.status",
+          "StringEquals": "cancelled",
+          "Next": "JobCancelled"
+        }
+      ],
+      "Default": "WaitForProcessing"
+    },
+    
+    "JobFailed": {
+      "Type": "Fail",
+      "Error": "JobFailed",
+      "Cause": "Video generation job failed"
+    },
+    
+    "JobCancelled": {
+      "Type": "Fail",
+      "Error": "JobCancelled",
+      "Cause": "Video generation job was cancelled"
+    },
+    
+    "GetDownloadUrl": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT:function:get-multitalk-download",
+      "Parameters": {
+        "job_id.$": "$.jobSubmission.job_id",
+        "expiration": 3600
+      },
+      "ResultPath": "$.downloadInfo",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "NotifyCompletion"
+    },
+    
+    "NotifyCompletion": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "SendSNSNotification",
+          "States": {
+            "SendSNSNotification": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "arn:aws:sns:REGION:ACCOUNT:multitalk-completions",
+                "Message": {
+                  "job_id.$": "$.jobSubmission.job_id",
+                  "status": "completed",
+                  "download_url.$": "$.downloadInfo.download_url",
+                  "s3_uri.$": "$.downloadInfo.s3_uri",
+                  "timestamp.$": "$$.State.EnteredTime"
+                }
+              },
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "UpdateDynamoDB",
+          "States": {
+            "UpdateDynamoDB": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:updateItem",
+              "Parameters": {
+                "TableName": "MultitalkJobs",
+                "Key": {
+                  "job_id": {
+                    "S.$": "$.jobSubmission.job_id"
+                  }
+                },
+                "UpdateExpression": "SET #status = :status, #completedAt = :timestamp, #downloadUrl = :url, #s3Uri = :s3",
+                "ExpressionAttributeNames": {
+                  "#status": "status",
+                  "#completedAt": "completed_at",
+                  "#downloadUrl": "download_url",
+                  "#s3Uri": "s3_uri"
+                },
+                "ExpressionAttributeValues": {
+                  ":status": {"S": "completed"},
+                  ":timestamp": {"S.$": "$$.State.EnteredTime"},
+                  ":url": {"S.$": "$.downloadInfo.download_url"},
+                  ":s3": {"S.$": "$.downloadInfo.s3_uri"}
+                }
+              },
+              "End": true
+            }
+          }
+        }
+      ],
+      "Next": "Success"
+    },
+    
+    "Success": {
+      "Type": "Succeed",
+      "OutputPath": "$"
+    }
+  }
+}
