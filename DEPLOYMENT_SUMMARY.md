@@ -43,11 +43,16 @@ The REST API has been successfully deployed to Modal and is fully operational.
 7. **Error Handling**: Returns appropriate error codes and messages
 8. **Load Testing**: Handled 20 concurrent requests successfully
 
+### ✅ Recent Fixes
+1. **Job Listing**: Fixed! Now properly tracks and returns job history
+   - Uses separate Modal Dict to track job IDs
+   - Returns jobs sorted by creation time
+   - Limits to last 1000 jobs to prevent unbounded growth
+
 ### ⚠️ Known Limitations
-1. **Job Listing**: Currently returns empty list due to Modal Dict limitations
-   - In production, use a proper database (PostgreSQL/DynamoDB)
-2. **Development Mode**: Currently accepts any API key
+1. **Development Mode**: Currently accepts any API key
    - Set `API_KEYS` environment variable in production
+2. **Database**: For production scale, consider PostgreSQL/DynamoDB instead of Modal Dict
 
 ## Example Usage
 
