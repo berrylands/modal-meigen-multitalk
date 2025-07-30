@@ -11,12 +11,14 @@ This project provides a serverless API for audio-driven multi-person conversatio
 - 🎥 Audio-driven talking head video generation
 - 🚀 Serverless deployment with automatic scaling
 - 💰 Pay-per-use pricing (no idle costs)
-- 🎭 Support for single and multi-person conversations (up to multiple speakers)
+- 🎭 Support for single and multi-person conversations
+- 🎯 Two audio modes: Sequential (add) or Simultaneous (para) speaking
 - 🎨 Works with cartoon characters and singing
 - ⚡ GPU-accelerated inference with Flash Attention 2.6.1
 - ☁️ S3 integration for input/output storage
 - 🔧 CUDA 12.1 optimized environment
 - 🗣️ Label Rotary Position Embedding (L-RoPE) for correct speaker-audio binding
+- 🎨 Color correction support to prevent brightness issues
 
 ## Requirements
 
@@ -74,15 +76,7 @@ This downloads:
 
 ## Usage
 
-### Test Environment
-
-Verify your setup:
-
-```bash
-modal run app_multitalk_cuda.py --action test
-```
-
-### Generate Video with S3
+### Quick Start
 
 #### Single Person Video
 Generate a single-person talking head video:
@@ -91,54 +85,107 @@ Generate a single-person talking head video:
 modal run app_multitalk_cuda.py
 ```
 
-#### Two-Person Conversation
-Generate a two-person conversation video:
+This uses default files from your S3 bucket:
+- Image: `multi1.png` 
+- Audio: `1.wav`
+
+#### Multi-Person Conversation
+Generate a multi-person conversation video:
 
 ```bash
 modal run app_multitalk_cuda.py --two-person
 ```
 
-Note: For two-person mode, ensure you have both `1.wav` and `2.wav` in your S3 bucket.
+This uses:
+- Image: `multi1.png` (should contain multiple people)
+- Audio: `1.wav` and `2.wav` (one for each person)
 
-### Generate Video with Custom Parameters
+### Advanced Usage
 
-Use the Modal functions directly for more control:
+#### Single Person with Custom Parameters
 
 ```python
-# Single person
+from app_multitalk_cuda import app, generate_video_cuda
+
 result = generate_video_cuda.remote(
-    prompt="A person speaking about technology",
-    image_key="portrait.png",
-    audio_key="speech.wav",
-    sample_steps=20
+    prompt="A person speaking enthusiastically about AI",
+    image_key="portrait.png",      # Your image in S3
+    audio_key="speech.wav",         # Your audio in S3
+    sample_steps=20                 # 10-50, higher = better quality
 )
 
-# Multiple people
+print(f"Video uploaded to: {result['s3_output']}")
+```
+
+#### Multi-Person Conversations
+
+```python
+from app_multitalk_cuda import app, generate_multi_person_video
+
+# Two people talking sequentially (one after another)
 result = generate_multi_person_video.remote(
-    prompt="Two people having a conversation",
+    prompt="Two people having a conversation about technology",
     image_key="two_people.png",
     audio_keys=["person1.wav", "person2.wav"],
-    sample_steps=20
+    sample_steps=20,
+    audio_type="add",        # Sequential speaking (default)
+    audio_cfg=4.0,          # Audio guide scale (3-5 recommended)
+    color_correction=0.7     # Reduce brightness issues (0-1)
+)
+
+# Two people talking simultaneously
+result = generate_multi_person_video.remote(
+    prompt="Two people singing together",
+    image_key="duet.png",
+    audio_keys=["singer1.wav", "singer2.wav"],
+    sample_steps=20,
+    audio_type="para"        # Simultaneous speaking
 )
 ```
+
+### Audio Modes Explained
+
+- **"add" mode (Sequential)**: People speak one after another
+  - Person 1 speaks first, then person 2
+  - Good for interviews, conversations, dialogues
+  
+- **"para" mode (Parallel)**: People speak at the same time
+  - Both speakers talk simultaneously
+  - Good for singing duets, overlapping dialogue
+
+### Parameter Guide
+
+| Parameter | Description | Default | Range/Options |
+|-----------|-------------|---------|---------------|
+| `prompt` | Text description of the scene | Required | Any descriptive text |
+| `image_key` | S3 key for reference image | Required | Must be 896x448 pixels |
+| `audio_key(s)` | S3 key(s) for audio file(s) | Required | WAV format, any duration |
+| `sample_steps` | Quality/speed tradeoff | 20 | 10-50 (10 min for lip sync) |
+| `audio_type` | Speaking mode for multi-person | "add" | "add" or "para" |
+| `audio_cfg` | Audio guidance strength | 4.0 | 3-5 (higher = better lip sync) |
+| `color_correction` | Brightness correction | 0.7 | 0-1 (lower = less correction) |
 
 ## Input Requirements
 
 ### Images
-- **Resolution**: 896x448 pixels (exactly)
+- **Resolution**: Must be resized to 896x448 pixels (done automatically)
 - **Format**: PNG or JPG
 - **Content**: 
-  - Single person: Portrait photo or character image
-  - Multiple people: Image containing all speakers
+  - Single person: Clear portrait photo or character image
+  - Multiple people: Image containing all speakers clearly visible
+  - Position matters: People are mapped left-to-right to audio files
 
 ### Audio
-- **Format**: WAV file
+- **Format**: WAV file (MP3 not supported)
 - **Sample Rate**: Any (automatically resampled to 16kHz)
-- **Duration**: Any length (frames calculated automatically)
-- **Multi-person**: 
-  - Provide separate audio files for each speaker
-  - Audio files are synchronized to longest duration
-  - Each speaker's audio is mapped to their position in the image
+- **Duration**: Any length (model defaults to 81 frames / ~3.4 seconds)
+- **Quality**: Clear speech without background music for best results
+
+### Multi-Person Setup
+- **Audio Mapping**: First audio → leftmost person, second audio → next person, etc.
+- **Sequential Mode**: Audios play one after another
+- **Simultaneous Mode**: All audios play at the same time
+- **Max Speakers**: Tested with 2-3 people
 
 ## Output
 
@@ -147,30 +194,56 @@ result = generate_multi_person_video.remote(
 - **Frame Rate**: 24 fps
 - **Location**: Uploaded to S3 bucket under `outputs/` prefix
 
-## Advanced Configuration
+## Common Use Cases
 
-### GPU Selection
-
-The system uses A10G GPUs by default. To use different GPUs:
-
+### 1. Interview/Podcast
 ```python
-# In app_multitalk_cuda.py
-@app.function(gpu="a100")  # Options: t4, a10g, a100
+result = generate_multi_person_video.remote(
+    prompt="A podcast host interviewing a tech expert",
+    image_key="podcast_studio.png",
+    audio_keys=["host_questions.wav", "expert_answers.wav"],
+    audio_type="add",  # They speak sequentially
+    sample_steps=20
+)
 ```
 
-### VRAM Parameters
-
-Adjust based on GPU memory:
-- A10G (24GB): 8000000000
-- A100 (40GB): 11000000000
-- A100 (80GB): 22000000000
-
-### Sample Steps
-
-Control generation quality/speed:
-```bash
---sample-steps 20  # Default: 20, Range: 10-50
+### 2. Music Duet
+```python
+result = generate_multi_person_video.remote(
+    prompt="Two singers performing a duet",
+    image_key="singers.png",
+    audio_keys=["singer1.wav", "singer2.wav"],
+    audio_type="para",  # They sing together
+    sample_steps=30    # Higher quality for music
+)
 ```
+
+### 3. Educational Content
+```python
+result = generate_video_cuda.remote(
+    prompt="A teacher explaining mathematics enthusiastically",
+    image_key="teacher.png",
+    audio_key="math_lesson.wav",
+    sample_steps=20
+)
+```
+
+## Performance Tips
+
+1. **Optimal Settings**:
+   - Sample steps: 20 for normal use, 10 for quick tests, 40+ for high quality
+   - Audio CFG: 4.0 works well for most cases, increase to 5.0 for better lip sync
+   - Color correction: 0.7 prevents over-brightness, adjust if needed
+
+2. **Processing Time**:
+   - Single person (81 frames): ~2-3 minutes on A100
+   - Two people (81 frames): ~3-5 minutes on A100
+   - Longer videos scale linearly
+
+3. **Cost Optimization**:
+   - Use `sample_steps=10` for testing
+   - A10G GPUs are more cost-effective than A100
+   - Videos are cached for 15 minutes after generation
 
 ## Architecture
 
@@ -183,75 +256,113 @@ The implementation uses:
 
 ## Troubleshooting
 
-### Flash Attention Issues
+### Common Issues
 
-If you encounter Flash Attention errors:
-1. Ensure you're using the CUDA base image version
-2. Check GPU compatibility (requires compute capability ≥ 7.5)
+1. **Both characters speak with the same audio**
+   - Solution: Use `audio_type="add"` for sequential speaking
+   - Ensure audio files are different for each person
 
-### Image Dimension Errors
+2. **Characters speak simultaneously when they shouldn't**
+   - Solution: Use `audio_type="add"` instead of `"para"`
+   - "add" = sequential, "para" = simultaneous
 
-Always resize images to exactly 896x448 pixels. The model architecture requires this specific resolution.
+3. **Bright/washed out faces**
+   - Solution: Adjust `color_correction` parameter (try 0.5-0.8)
+   - Lower values = less correction, darker output
 
-### Audio Length Errors
+4. **Poor lip sync**
+   - Solution: Increase `audio_cfg` to 5.0
+   - Ensure audio is clear speech without background music
+   - Use at least 10 sample steps
 
-The system automatically calculates the correct frame count based on audio duration. Frame counts must follow the pattern 4n+1 (e.g., 21, 45, 81, 121, 161, 201).
+5. **Image dimension errors**
+   - Images are automatically resized to 896x448
+   - If errors persist, manually resize your image
 
-### Memory Issues
+6. **Memory Issues (OOM)**
+   - Reduce sample steps to 10
+   - Use A100 GPU instead of A10G
+   - Process shorter audio clips
 
-If you encounter OOM errors:
-1. Reduce sample steps
-2. Use a larger GPU (A100 recommended)
-3. Adjust VRAM parameters
+### Best Practices
+
+1. **For Conversations**: Use `audio_type="add"` so people speak in turns
+2. **For Singing**: Use `audio_type="para"` for simultaneous vocals
+3. **For Quality**: Use 20+ sample steps and `audio_cfg=4.0`
+4. **For Testing**: Use 10 sample steps to iterate quickly
 
 ## Development
 
 For development setup and contributing guidelines, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
-## Multi-Person Conversation Examples
+## Complete Examples
 
-### Two-Person Dialogue
+### Example 1: Basic Single Person
 ```python
-# Example: Interview scenario
-result = generate_multi_person_video.remote(
-    prompt="An interviewer and guest discussing artificial intelligence",
-    image_key="interview_scene.png",  # Image with two people
-    audio_keys=["interviewer.wav", "guest.wav"],
-    sample_steps=20
-)
+from app_multitalk_cuda import app, generate_video_cuda
+
+with app.run():
+    result = generate_video_cuda.remote(
+        prompt="A professional news anchor delivering breaking news",
+        image_key="anchor.png",
+        audio_key="news_report.wav",
+        sample_steps=20
+    )
+    print(f"Video ready: {result['s3_output']}")
 ```
 
-### Three-Person Panel
+### Example 2: Two-Person Interview (Sequential)
 ```python
-# Example: Panel discussion
-result = generate_multi_person_video.remote(
-    prompt="Three experts discussing climate change",
-    image_key="panel_discussion.png",  # Image with three people
-    audio_keys=["moderator.wav", "expert1.wav", "expert2.wav"],
-    sample_steps=20
-)
+from app_multitalk_cuda import app, generate_multi_person_video
+
+with app.run():
+    result = generate_multi_person_video.remote(
+        prompt="A journalist interviewing a scientist about climate change",
+        image_key="interview_setup.png",
+        audio_keys=["journalist_questions.wav", "scientist_answers.wav"],
+        audio_type="add",      # They speak one after another
+        sample_steps=20,
+        audio_cfg=4.0,        # Good lip sync
+        color_correction=0.7   # Prevent over-brightness
+    )
+    print(f"Interview video: {result['s3_output']}")
 ```
 
-### JSON Input Format
-The system automatically creates the correct JSON format for MultiTalk:
-```json
-{
-  "prompt": "Two people having a conversation",
-  "cond_image": "input.png",
-  "cond_audio": {
-    "person1": "input_person1.wav",
-    "person2": "input_person2.wav"
-  }
-}
+### Example 3: Singing Duet (Simultaneous)
+```python
+from app_multitalk_cuda import app, generate_multi_person_video
+
+with app.run():
+    result = generate_multi_person_video.remote(
+        prompt="Two singers performing a beautiful duet on stage",
+        image_key="singers_on_stage.png",
+        audio_keys=["singer1_part.wav", "singer2_part.wav"],
+        audio_type="para",     # They sing at the same time
+        sample_steps=30,       # Higher quality for music
+        audio_cfg=5.0,        # Maximum lip sync accuracy
+        color_correction=0.6   # Adjust for stage lighting
+    )
+    print(f"Duet video: {result['s3_output']}")
+```
+
+### Example 4: Quick Test Mode
+```python
+# Minimal settings for rapid testing
+result = generate_multi_person_video.remote(
+    prompt="Two friends chatting",
+    image_key="friends.png",
+    audio_keys=["friend1.wav", "friend2.wav"],
+    sample_steps=10,  # Minimum for decent quality
+    audio_type="add"
+)
 ```
 
 ## Files
 
 - `app_multitalk_cuda.py` - Main Modal application with Flash Attention and multi-person support
-- `app_multitalk_multi_person.py` - Standalone multi-person implementation
 - `s3_utils.py` - S3 integration utilities
-- `modal_image.py` - Image definition configurations
 - `MODAL_ML_LESSONS_LEARNED.md` - Detailed insights from the implementation journey
+- `README.md` - This documentation
 
 ## License
 

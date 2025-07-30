@@ -104,7 +104,7 @@ hf_cache_volume = modal.Volume.from_name("multitalk-hf-cache", create_if_missing
         modal.Secret.from_name("aws-secret"),
         modal.Secret.from_name("huggingface-secret"),
     ],
-    timeout=900,
+    timeout=1800,  # 30 minutes for multi-person generation
 )
 def generate_video_cuda(
     prompt: str = "A person is speaking enthusiastically about technology",
@@ -219,30 +219,9 @@ def generate_video_cuda(
         # Resample to 16kHz
         y_16k = librosa.resample(y, orig_sr=sr, target_sr=16000)
         
-        # Calculate frame count
-        fps = 24
-        raw_frames = int(duration * fps)
-        
-        if raw_frames < 60:
-            frame_count = 45
-        elif raw_frames < 100:
-            frame_count = 81
-        else:
-            frame_count = 121
-        
-        print(f"  Using {frame_count} frames")
-        
-        # Adjust audio duration
-        target_duration = frame_count / fps
-        target_samples = int(target_duration * 16000)
-        
-        if len(y_16k) < target_samples:
-            padding = target_samples - len(y_16k)
-            y_final = np.pad(y_16k, (0, padding), mode='constant')
-            print(f"  Padded to {target_duration:.2f}s")
-        else:
-            y_final = y_16k[:target_samples]
-            print(f"  Truncated to {target_duration:.2f}s")
+        # Keep original audio duration (let model handle timing)
+        y_final = y_16k
+        print(f"  Duration: {len(y_final)/16000:.2f}s")
         
         sf.write("input.wav", y_final, 16000, subtype='PCM_16')
         
@@ -259,8 +238,8 @@ def generate_video_cuda(
         # Run MultiTalk
         print(f"\n🎬 Running MultiTalk...")
         print(f"  Image: {EXPECTED_WIDTH}x{EXPECTED_HEIGHT}")
-        print(f"  Audio: {target_duration:.2f}s")
-        print(f"  Frames: {frame_count}")
+        print(f"  Audio: {duration:.2f}s")
+        print(f"  Frames: Default (model will determine)")
         print(f"  Attention: Flash Attention 2.6.1")
         
         cmd = [
@@ -268,7 +247,7 @@ def generate_video_cuda(
             "--ckpt_dir", "weights/Wan2.1-I2V-14B-480P",
             "--wav2vec_dir", "weights/chinese-wav2vec2-base",
             "--input_json", "input.json",
-            "--frame_num", str(frame_count),
+            # Don't specify frame_num - let model use default
             "--sample_steps", str(sample_steps),
             "--num_persistent_param_in_dit", "11000000000",
             "--mode", "streaming",
@@ -298,7 +277,7 @@ def generate_video_cuda(
             
             # Upload to S3
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            s3_key = f"outputs/multitalk_cuda_{timestamp}_{frame_count}f.mp4"
+            s3_key = f"outputs/multitalk_cuda_{timestamp}.mp4"
             s3.upload_file("output.mp4", bucket_name, s3_key)
             
             s3_uri = f"s3://{bucket_name}/{s3_key}"
@@ -313,7 +292,6 @@ def generate_video_cuda(
                 "s3_output": s3_uri,
                 "local_output": local_path,
                 "video_size": video_size,
-                "frame_count": frame_count,
                 "audio_duration": duration,
                 "image_original": img.size,
                 "image_resized": (EXPECTED_WIDTH, EXPECTED_HEIGHT),
@@ -343,14 +321,18 @@ def generate_video_cuda(
         modal.Secret.from_name("aws-secret"),
         modal.Secret.from_name("huggingface-secret"),
     ],
-    timeout=900,
+    timeout=1800,  # 30 minutes for multi-person generation
 )
 def generate_multi_person_video(
     prompt: str = "Two people having a conversation",
     image_key: str = "multi1.png",
     audio_keys: Union[str, List[str]] = "1.wav",  # Can be single string or list
     sample_steps: int = 20,
-    output_prefix: str = "multitalk"
+    output_prefix: str = "multitalk",
+    audio_type: str = "add",  # "para" (simultaneous) or "add" (sequential)
+    use_bbox: bool = False,  # Whether to use bounding boxes
+    audio_cfg: float = 4.0,  # Audio guide scale (3-5 recommended for lip sync)
+    color_correction: float = 0.7  # Color correction strength (0-1, lower = less correction)
 ):
     """
     Generate video with support for single or multi-person conversations.
@@ -488,26 +470,16 @@ def generate_multi_person_video(
         resized_img.save("input.png")
         print(f"  Resized to: {EXPECTED_WIDTH}x{EXPECTED_HEIGHT}")
         
-        # Calculate frame count based on longest audio
+        # Process audio files
         max_duration = max(all_durations)
         print(f"\n🎵 Processing {num_speakers} audio file(s)...")
         print(f"  Max duration: {max_duration:.2f}s")
         
-        fps = 24
-        raw_frames = int(max_duration * fps)
+        # Let the model use its default frame count (81)
+        # Don't specify frame_num in the command
         
-        if raw_frames < 60:
-            frame_count = 45
-        elif raw_frames < 100:
-            frame_count = 81
-        else:
-            frame_count = 121
-        
-        print(f"  Using {frame_count} frames")
-        
-        # Process each audio to match frame count
-        target_duration = frame_count / fps
-        target_samples = int(target_duration * 16000)
+        # Process each audio to match duration
+        target_samples = int(max_duration * 16000)
         
         cond_audio = {}
         
@@ -521,14 +493,9 @@ def generate_multi_person_video(
                 target_sr=16000
             )
             
-            # Adjust duration
-            if len(y_16k) < target_samples:
-                padding = target_samples - len(y_16k)
-                y_final = np.pad(y_16k, (0, padding), mode='constant')
-                print(f"    Padded from {audio_info['duration']:.2f}s to {target_duration:.2f}s")
-            else:
-                y_final = y_16k[:target_samples]
-                print(f"    Truncated from {audio_info['duration']:.2f}s to {target_duration:.2f}s")
+            # Keep original audio duration (let model handle timing)
+            y_final = y_16k
+            print(f"    Duration: {len(y_final)/16000:.2f}s")
             
             # Save processed audio
             output_filename = f"input_{person_id}.wav"
@@ -545,21 +512,38 @@ def generate_multi_person_video(
         
         # Add audio_type for multi-person conversations
         if num_speakers > 1:
-            input_data["audio_type"] = "para"
+            input_data["audio_type"] = audio_type
+            
+            # Add bounding boxes if requested
+            if use_bbox:
+                # For 2 people, split image left/right
+                # Based on official example structure
+                bbox_data = {}
+                if num_speakers == 2:
+                    # Left half for person1, right half for person2
+                    bbox_data["person1"] = [0, 0, EXPECTED_WIDTH//2, EXPECTED_HEIGHT]
+                    bbox_data["person2"] = [EXPECTED_WIDTH//2, 0, EXPECTED_WIDTH, EXPECTED_HEIGHT]
+                    input_data["bbox"] = bbox_data
+                    print(f"  Added bounding boxes: {bbox_data}")
         
         with open("input.json", "w") as f:
             json.dump(input_data, f, indent=2)
         
         print(f"\n📝 Created input.json with {num_speakers} speaker(s):")
-        print(json.dumps(cond_audio, indent=2))
+        print("Full JSON content:")
+        print(json.dumps(input_data, indent=2))
         
         # Run MultiTalk
         print(f"\n🎬 Running MultiTalk...")
         print(f"  Mode: {'Multi-person' if num_speakers > 1 else 'Single person'}")
+        if num_speakers > 1:
+            print(f"  Audio mode: {audio_type} ({'sequential' if audio_type == 'add' else 'simultaneous'})")
         print(f"  Image: {EXPECTED_WIDTH}x{EXPECTED_HEIGHT}")
-        print(f"  Audio: {target_duration:.2f}s")
-        print(f"  Frames: {frame_count}")
+        print(f"  Audio duration: {max_duration:.2f}s")
+        print(f"  Frames: Default (model will determine)")
         print(f"  Attention: Flash Attention 2.6.1")
+        print(f"  Audio cfg: {audio_cfg}")
+        print(f"  Color correction: {color_correction}")
         
         # Get GPU VRAM parameter
         GPU_VRAM_PARAMS = {
@@ -575,15 +559,18 @@ def generate_multi_person_video(
             "--ckpt_dir", "weights/Wan2.1-I2V-14B-480P",
             "--wav2vec_dir", "weights/chinese-wav2vec2-base",
             "--input_json", "input.json",
-            "--frame_num", str(frame_count),
+            # Don't specify frame_num - let model use default
             "--sample_steps", str(sample_steps),
             "--num_persistent_param_in_dit", str(vram_param),
+            "--sample_audio_guide_scale", str(audio_cfg),  # Add audio guide scale
+            "--color_correction_strength", str(color_correction),  # Add color correction
+            "--mode", "streaming",  # Always use streaming for multi-person
+            "--use_teacache",  # Always use teacache
             "--save_file", "output",
         ]
         
-        # Only add streaming and teacache for longer videos
-        if frame_count > 45:
-            cmd.extend(["--mode", "streaming", "--use_teacache"])
+        print(f"\n📋 Command to execute:")
+        print(" ".join(cmd))
         
         # Set environment to ensure flash-attn is used
         env = os.environ.copy()
@@ -608,7 +595,7 @@ def generate_multi_person_video(
             # Upload to S3
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             mode_suffix = f"{num_speakers}person" if num_speakers > 1 else "single"
-            s3_key = f"outputs/{output_prefix}_{mode_suffix}_{timestamp}_{frame_count}f.mp4"
+            s3_key = f"outputs/{output_prefix}_{mode_suffix}_{timestamp}.mp4"
             s3.upload_file("output.mp4", bucket_name, s3_key)
             
             s3_uri = f"s3://{bucket_name}/{s3_key}"
@@ -623,14 +610,14 @@ def generate_multi_person_video(
                 "s3_output": s3_uri,
                 "local_output": local_path,
                 "video_size": video_size,
-                "frame_count": frame_count,
                 "num_speakers": num_speakers,
                 "audio_durations": all_durations,
-                "target_duration": target_duration,
+                "max_duration": max_duration,
                 "image_original": img.size,
                 "image_resized": (EXPECTED_WIDTH, EXPECTED_HEIGHT),
                 "gpu": gpu_name,
-                "attention": "flash-attn-2.6.1"
+                "attention": "flash-attn-2.6.1",
+                "audio_mode": audio_type if num_speakers > 1 else "single"
             }
         else:
             print("\n❌ No output file found")
@@ -662,7 +649,10 @@ if __name__ == "__main__":
                 image_key="multi1.png",
                 audio_keys=["1.wav", "2.wav"],  # Two audio files
                 sample_steps=20,
-                output_prefix="multitalk_2person"
+                output_prefix="multitalk_2person",
+                audio_type="add",  # Sequential speaking
+                use_bbox=False,  # No bounding boxes needed
+                audio_cfg=4.0  # Default audio guide scale
             )
         else:
             print("👤 Running SINGLE-PERSON demo")
@@ -717,16 +707,20 @@ if __name__ == "__main__":
         modal.Secret.from_name("aws-secret"),
         modal.Secret.from_name("huggingface-secret"),
     ],
-    timeout=900,
+    timeout=1800,  # 30 minutes for multi-person generation
 )
 def test_two_person_conversation():
     """
     Test function specifically for two-person conversation.
     """
+    # Test with different audio for each speaker
     return generate_multi_person_video.local(
         prompt="Two people having an animated conversation",
-        image_key="multi1.png",
-        audio_keys=["1.wav", "2.wav"],
-        sample_steps=20,
-        output_prefix="multitalk_2person_test"
+        image_key="multi1.png", 
+        audio_keys=["1.wav", "2.wav"],  # Different audio for each
+        sample_steps=10,  # Min 10 for good lip sync per README
+        output_prefix="multitalk_2person_test",
+        audio_type="add",  # Sequential speaking
+        use_bbox=False,  # No bounding boxes needed
+        audio_cfg=4.0  # Default audio guide scale
     )
