@@ -34,7 +34,8 @@
       "Bash(grep:*)",
       "WebFetch(domain:huggingface.co)",
       "mcp__remotion-documentation__remotion-documentation",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }

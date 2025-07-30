@@ -543,6 +543,10 @@ def generate_multi_person_video(
             "cond_audio": cond_audio
         }
         
+        # Add audio_type for multi-person conversations
+        if num_speakers > 1:
+            input_data["audio_type"] = "para"
+        
         with open("input.json", "w") as f:
             json.dump(input_data, f, indent=2)
         
@@ -557,6 +561,15 @@ def generate_multi_person_video(
         print(f"  Frames: {frame_count}")
         print(f"  Attention: Flash Attention 2.6.1")
         
+        # Get GPU VRAM parameter
+        GPU_VRAM_PARAMS = {
+            "NVIDIA A10G": 8000000000,
+            "NVIDIA A100-SXM4-40GB": 11000000000,
+            "NVIDIA A100-SXM4-80GB": 22000000000,
+        }
+        gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No GPU"
+        vram_param = GPU_VRAM_PARAMS.get(gpu_name, 8000000000)
+        
         cmd = [
             "python3", "generate_multitalk.py",
             "--ckpt_dir", "weights/Wan2.1-I2V-14B-480P",
@@ -564,11 +577,13 @@ def generate_multi_person_video(
             "--input_json", "input.json",
             "--frame_num", str(frame_count),
             "--sample_steps", str(sample_steps),
-            "--num_persistent_param_in_dit", "11000000000",
-            "--mode", "streaming",
-            "--use_teacache",
+            "--num_persistent_param_in_dit", str(vram_param),
             "--save_file", "output",
         ]
+        
+        # Only add streaming and teacache for longer videos
+        if frame_count > 45:
+            cmd.extend(["--mode", "streaming", "--use_teacache"])
         
         # Set environment to ensure flash-attn is used
         env = os.environ.copy()
@@ -689,3 +704,29 @@ if __name__ == "__main__":
             if result.get('stdout'):
                 print(f"\nSTDOUT: {result['stdout'][:500]}")
         print("="*60)
+
+
+@app.function(
+    image=multitalk_cuda_image,
+    gpu="a100-40gb",
+    volumes={
+        "/models": model_volume,
+        "/root/.cache/huggingface": hf_cache_volume,
+    },
+    secrets=[
+        modal.Secret.from_name("aws-secret"),
+        modal.Secret.from_name("huggingface-secret"),
+    ],
+    timeout=900,
+)
+def test_two_person_conversation():
+    """
+    Test function specifically for two-person conversation.
+    """
+    return generate_multi_person_video.local(
+        prompt="Two people having an animated conversation",
+        image_key="multi1.png",
+        audio_keys=["1.wav", "2.wav"],
+        sample_steps=20,
+        output_prefix="multitalk_2person_test"
+    )
