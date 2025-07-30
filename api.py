@@ -23,13 +23,16 @@ from botocore.exceptions import ClientError
 
 # Import our existing Modal app and functions
 try:
-    from app_multitalk_cuda import app as modal_app, generate_video_cuda, generate_multi_person_video
+    from app_multitalk_cuda import app as cuda_app, generate_video_cuda, generate_multi_person_video
 except ImportError:
     # For testing without Modal runtime
     import modal
-    modal_app = modal.App("multitalk-api")
+    cuda_app = None
     generate_video_cuda = None
     generate_multi_person_video = None
+
+# Create our API app
+app = modal.App("multitalk-api")
 
 # ==================== Configuration ====================
 
@@ -187,6 +190,8 @@ class WebhookPayload(BaseModel):
 
 # In-memory job storage (use PostgreSQL/Redis for production)
 jobs_db = modal.Dict.from_name("multitalk-jobs", create_if_missing=True)
+# Keep track of job IDs separately since Modal Dict doesn't support iteration
+job_ids_db = modal.Dict.from_name("multitalk-job-ids", create_if_missing=True)
 
 class JobManager:
     """Manages job lifecycle and storage."""
@@ -207,6 +212,18 @@ class JobManager:
             "metadata": {}
         }
         jobs_db[job_id] = job_data
+        
+        # Track job ID with timestamp for listing
+        job_ids_list = job_ids_db.get("job_ids", [])
+        job_ids_list.append({
+            "id": job_id,
+            "created_at": job_data["created_at"]
+        })
+        # Keep only last 1000 job IDs to prevent unbounded growth
+        if len(job_ids_list) > 1000:
+            job_ids_list = job_ids_list[-1000:]
+        job_ids_db["job_ids"] = job_ids_list
+        
         return job_id
     
     @staticmethod
@@ -224,22 +241,32 @@ class JobManager:
         job.update(updates)
         job["updated_at"] = datetime.now(timezone.utc).isoformat()
         jobs_db[job_id] = job
+        
+        # If job is cancelled or failed, we could optionally remove it from the list
+        # For now, we keep all jobs for audit trail
+        
         return True
     
     @staticmethod
     async def list_jobs(limit: int = 100) -> List[dict]:
         """List recent jobs."""
-        # In production, implement proper pagination
-        all_jobs = []
+        # Get job IDs list
+        job_ids_list = job_ids_db.get("job_ids", [])
         
-        # Modal Dict doesn't support iteration directly
-        # For now, we'll just return an empty list in testing
-        # In production, use a proper database
-        try:
-            # This is a placeholder - in production use proper DB queries
-            return []
-        except Exception:
-            return []
+        # Sort by created_at descending (most recent first)
+        job_ids_list.sort(key=lambda x: x["created_at"], reverse=True)
+        
+        # Limit the number of jobs
+        job_ids_list = job_ids_list[:limit]
+        
+        # Fetch job details
+        all_jobs = []
+        for job_info in job_ids_list:
+            job = jobs_db.get(job_info["id"])
+            if job:
+                all_jobs.append(job)
+        
+        return all_jobs
 
 # ==================== Authentication ====================
 
@@ -672,7 +699,7 @@ api_image = modal.Image.debian_slim().pip_install(
 )
 
 # Create Modal function for the API
-@modal_app.function(
+@app.function(
     image=api_image,
     secrets=[
         modal.Secret.from_name("aws-secret")
