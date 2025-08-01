@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
 Quick test of 'add' mode with minimal frames.
+ARCHIVED - DO NOT RUN DIRECTLY
 """
 
-import modal
-from app_multitalk_cuda import app, generate_multi_person_video
+# This file is archived and should not be run directly
+# The import below will fail as it's in the archive directory
+# from app_multitalk_cuda import app, generate_multi_person_video
 
-@app.function()
 def test_add_mode_quick():
     """Quick test with 'add' mode for sequential speaking."""
     

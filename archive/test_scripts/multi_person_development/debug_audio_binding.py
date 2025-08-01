@@ -3,10 +3,12 @@
 Debug audio-character binding issue.
 """
 
-import modal
-from app_multitalk_cuda import app, multitalk_cuda_image, model_volume, hf_cache_volume
+# ARCHIVED - DO NOT USE
+# import modal
+# ARCHIVED - DO NOT USE
+# from app_multitalk_cuda import app, multitalk_cuda_image, model_volume, hf_cache_volume
 
-@app.function(
+# @app.function(
     image=multitalk_cuda_image,
     gpu="a100-40gb",
     volumes={

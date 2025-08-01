@@ -3,10 +3,12 @@
 Test to compare single vs multi-person audio handling.
 """
 
-import modal
-from app_multitalk_cuda import app, generate_video_cuda, generate_multi_person_video
+# ARCHIVED - DO NOT USE
+# import modal
+# ARCHIVED - DO NOT USE
+# from app_multitalk_cuda import app, generate_video_cuda, generate_multi_person_video
 
-@app.function()
+# @app.function()
 def compare_audio_handling():
     """Compare how audio is handled in single vs multi-person."""
     

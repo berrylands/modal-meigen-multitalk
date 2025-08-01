@@ -19,6 +19,8 @@ This project provides a serverless API for audio-driven multi-person conversatio
 - 🔧 CUDA 12.1 optimized environment
 - 🗣️ Label Rotary Position Embedding (L-RoPE) for correct speaker-audio binding
 - 🎨 Color correction support to prevent brightness issues
+- 🎬 Automatic frame count calculation for optimal video quality
+- 📊 REST API with async job processing
 
 ## Requirements
 
@@ -73,6 +75,30 @@ This downloads:
 - Wan2.1-I2V-14B-480P (base model)
 - chinese-wav2vec2-base (audio encoder)
 - MeiGen-MultiTalk weights
+
+## Deployment
+
+### Deploy to Modal
+
+1. **Deploy the main application**:
+```bash
+modal deploy app_multitalk_cuda.py --name multitalk-cuda
+```
+
+2. **Deploy the REST API** (optional):
+```bash
+modal deploy api.py --name multitalk-api
+```
+
+### Verify Deployment
+
+```bash
+# List deployed apps
+modal app list | grep multitalk
+
+# Test the deployment
+modal run app_multitalk_cuda.py::generate_video_cuda --help
+```
 
 ## Usage
 
@@ -279,7 +305,12 @@ The implementation uses:
    - Images are automatically resized to 896x448
    - If errors persist, manually resize your image
 
-6. **Memory Issues (OOM)**
+6. **Single-person generation fails with "Audio file not exists" error**
+   - The app automatically calculates frame counts based on audio duration
+   - Frame counts: <2.5s → 45 frames, 2.5-4.2s → 81 frames, >4.2s → 121 frames
+   - Audio is padded/truncated to match frame requirements
+
+7. **Memory Issues (OOM)**
    - Reduce sample steps to 10
    - Use A100 GPU instead of A10G
    - Process shorter audio clips

@@ -3,10 +3,12 @@
 Test different audio modes to fix simultaneous speaking.
 """
 
-import modal
-from app_multitalk_cuda import app, generate_multi_person_video
+# ARCHIVED - DO NOT USE
+# import modal
+# ARCHIVED - DO NOT USE
+# from app_multitalk_cuda import app, generate_multi_person_video
 
-@app.function()
+# @app.function()
 def test_audio_modes():
     """Test 'add' vs 'para' audio modes."""
     
