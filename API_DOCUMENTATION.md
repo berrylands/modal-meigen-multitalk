@@ -4,25 +4,39 @@
 
 The MeiGen-MultiTalk REST API provides programmatic access to audio-driven video generation capabilities. Generate videos with single or multiple speakers synchronized to audio tracks.
 
-**Base URL**: `https://your-modal-app.modal.run/api/v1`
+**Base URL**: `https://berrylands--multitalk-api-fastapi-app.modal.run/api/v1`
 
 **Authentication**: Bearer token (API key) required for all endpoints
 
 ## Quick Start
 
 ```bash
-# Submit a video generation job
-curl -X POST "https://your-modal-app.modal.run/api/v1/generate" \
+# Submit a single-person video generation job
+curl -X POST "https://berrylands--multitalk-api-fastapi-app.modal.run/api/v1/generate" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "A person speaking",
-    "image_s3_url": "s3://bucket/image.png",
-    "audio_s3_urls": ["s3://bucket/audio.wav"]
+    "prompt": "A person speaking naturally with clear lip sync",
+    "image_s3_url": "s3://760572149-framepack/multi1.png",
+    "audio_s3_urls": "s3://760572149-framepack/1.wav"
+  }'
+
+# Submit a two-person conversation job
+curl -X POST "https://berrylands--multitalk-api-fastapi-app.modal.run/api/v1/generate" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Two people having a conversation",
+    "image_s3_url": "s3://760572149-framepack/multi1.png",
+    "audio_s3_urls": ["s3://760572149-framepack/1.wav", "s3://760572149-framepack/2.wav"],
+    "options": {
+      "audio_type": "add",
+      "sample_steps": 20
+    }
   }'
 
 # Check job status
-curl "https://your-modal-app.modal.run/api/v1/jobs/{job_id}" \
+curl "https://berrylands--multitalk-api-fastapi-app.modal.run/api/v1/jobs/{job_id}" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
@@ -73,7 +87,7 @@ Submit a new video generation job.
 
 **Example - Single Person**:
 ```bash
-curl -X POST "https://your-modal-app.modal.run/api/v1/generate" \
+curl -X POST "https://berrylands--multitalk-api-fastapi-app.modal.run/api/v1/generate" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -89,7 +103,7 @@ curl -X POST "https://your-modal-app.modal.run/api/v1/generate" \
 
 **Example - Multi-Person Conversation**:
 ```bash
-curl -X POST "https://your-modal-app.modal.run/api/v1/generate" \
+curl -X POST "https://berrylands--multitalk-api-fastapi-app.modal.run/api/v1/generate" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -348,7 +362,7 @@ class MultiTalkClient:
 
 # Usage example
 client = MultiTalkClient(
-    'https://your-modal-app.modal.run/api/v1',
+    'https://berrylands--multitalk-api-fastapi-app.modal.run/api/v1',
     'YOUR_API_KEY'
 )
 
@@ -441,7 +455,7 @@ class MultiTalkClient {
 // Usage example
 (async () => {
   const client = new MultiTalkClient(
-    'https://your-modal-app.modal.run/api/v1',
+    'https://berrylands--multitalk-api-fastapi-app.modal.run/api/v1',
     'YOUR_API_KEY'
   );
 
@@ -601,7 +615,7 @@ func (c *MultiTalkClient) WaitForCompletion(jobID string, timeout time.Duration)
 // Usage example
 func main() {
     client := &MultiTalkClient{
-        APIUrl: "https://your-modal-app.modal.run/api/v1",
+        APIUrl: "https://berrylands--multitalk-api-fastapi-app.modal.run/api/v1",
         APIKey: "YOUR_API_KEY",
     }
 

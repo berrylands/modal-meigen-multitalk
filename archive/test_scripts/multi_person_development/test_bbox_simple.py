@@ -3,10 +3,12 @@
 Simple test to check if bounding boxes fix the audio binding issue.
 """
 
-import modal
-from app_multitalk_cuda import app, generate_multi_person_video
+# ARCHIVED - DO NOT USE
+# import modal
+# ARCHIVED - DO NOT USE
+# from app_multitalk_cuda import app, generate_multi_person_video
 
-@app.function()
+# @app.function()
 def test_bbox_configurations():
     """Test different bbox configurations for multi-person video."""
     

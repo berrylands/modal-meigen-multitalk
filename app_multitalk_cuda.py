@@ -219,9 +219,30 @@ def generate_video_cuda(
         # Resample to 16kHz
         y_16k = librosa.resample(y, orig_sr=sr, target_sr=16000)
         
-        # Keep original audio duration (let model handle timing)
-        y_final = y_16k
-        print(f"  Duration: {len(y_final)/16000:.2f}s")
+        # Calculate frame count - CRITICAL for single-person generation
+        fps = 24
+        raw_frames = int(duration * fps)
+        
+        if raw_frames < 60:
+            frame_count = 45
+        elif raw_frames < 100:
+            frame_count = 81
+        else:
+            frame_count = 121
+        
+        print(f"  Using {frame_count} frames")
+        
+        # Adjust audio duration to match frame count
+        target_duration = frame_count / fps
+        target_samples = int(target_duration * 16000)
+        
+        if len(y_16k) < target_samples:
+            padding = target_samples - len(y_16k)
+            y_final = np.pad(y_16k, (0, padding), mode='constant')
+            print(f"  Padded to {target_duration:.2f}s")
+        else:
+            y_final = y_16k[:target_samples]
+            print(f"  Truncated to {target_duration:.2f}s")
         
         sf.write("input.wav", y_final, 16000, subtype='PCM_16')
         
@@ -238,18 +259,29 @@ def generate_video_cuda(
         # Run MultiTalk
         print(f"\n🎬 Running MultiTalk...")
         print(f"  Image: {EXPECTED_WIDTH}x{EXPECTED_HEIGHT}")
-        print(f"  Audio: {duration:.2f}s")
-        print(f"  Frames: Default (model will determine)")
+        print(f"  Audio: {target_duration:.2f}s")
+        print(f"  Frames: {frame_count}")
         print(f"  Attention: Flash Attention 2.6.1")
         
+        # Use same GPU memory optimization as multi-person
+        GPU_VRAM_PARAMS = {
+            "NVIDIA A10G": 8000000000,
+            "NVIDIA A100-SXM4-40GB": 11000000000,
+            "NVIDIA A100-SXM4-80GB": 22000000000,
+        }
+        gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No GPU"
+        vram_param = GPU_VRAM_PARAMS.get(gpu_name, 8000000000)
+
         cmd = [
             "python3", "generate_multitalk.py",
             "--ckpt_dir", "weights/Wan2.1-I2V-14B-480P",
             "--wav2vec_dir", "weights/chinese-wav2vec2-base",
             "--input_json", "input.json",
-            # Don't specify frame_num - let model use default
+            "--frame_num", str(frame_count),  # CRITICAL: Must specify frame count
             "--sample_steps", str(sample_steps),
-            "--num_persistent_param_in_dit", "11000000000",
+            "--num_persistent_param_in_dit", str(vram_param),
+            "--sample_audio_guide_scale", "4.0",  # Add audio guide scale
+            "--color_correction_strength", "0.7",  # Add color correction
             "--mode", "streaming",
             "--use_teacache",
             "--save_file", "output",
@@ -629,6 +661,41 @@ def generate_multi_person_video(
         import traceback
         traceback.print_exc()
         return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+
+
+@app.function(
+    image=multitalk_cuda_image,
+    gpu="a10g",
+    memory=32768,
+    timeout=900,
+    secrets=[modal.Secret.from_name("aws-secret")],
+    volumes={
+        "/models": model_volume,
+        "/root/.cache/huggingface": hf_cache_volume,
+    },
+)
+def generate_single_person_fixed(
+    prompt: str = "A person speaking naturally", 
+    image_key: str = "multi1.png",
+    audio_key: str = "1.wav",
+    sample_steps: int = 20,
+    output_prefix: str = "single_person"
+):
+    """
+    Generate single-person video using the multi-person function.
+    This bypasses the single-person validation issues.
+    """
+    print("🔧 Using multi-person function for single-person video (workaround)")
+    # Call multi-person function with single audio
+    return generate_multi_person_video.local(
+        prompt=prompt,
+        image_key=image_key,
+        audio_keys=[audio_key],  # Single audio as list
+        sample_steps=sample_steps,
+        output_prefix=output_prefix,
+        audio_type="add",
+        use_bbox=False
+    )
 
 
 if __name__ == "__main__":

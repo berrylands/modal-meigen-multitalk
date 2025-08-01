@@ -21,18 +21,14 @@ from pydantic import BaseModel, Field, HttpUrl, validator
 import boto3
 from botocore.exceptions import ClientError
 
-# Import our existing Modal app and functions
-try:
-    from app_multitalk_cuda import app as cuda_app, generate_video_cuda, generate_multi_person_video
-except ImportError:
-    # For testing without Modal runtime
-    import modal
-    cuda_app = None
-    generate_video_cuda = None
-    generate_multi_person_video = None
+# Import Modal
+import modal
 
 # Create our API app
 app = modal.App("multitalk-api")
+
+# We'll import the CUDA functions dynamically when needed
+# This avoids import errors during API-only deployment
 
 # ==================== Configuration ====================
 
@@ -615,36 +611,33 @@ async def process_video_generation(job_id: str, request: VideoGenerationRequest)
         # Update progress
         await JobManager.update_job(job_id, {"progress": 30})
         
-        # Call appropriate Modal function
-        if generate_video_cuda is None or generate_multi_person_video is None:
-            # Testing mode - simulate successful completion
-            await asyncio.sleep(2)
-            result = {
-                "success": True,
-                "s3_output": f"s3://{output_bucket}/{request.output_s3_prefix}test_video_{job_id}.mp4",
-                "duration": 5.0,
-                "frames": 81,
-                "processing_time": 2.0
-            }
-        elif len(audio_keys) == 1:
-            # Single person video
-            result = await generate_video_cuda.remote.aio(
-                prompt=request.prompt,
-                image_key=image_key,
-                audio_key=audio_keys[0],
-                sample_steps=request.options.sample_steps
-            )
-        else:
-            # Multi-person video
-            result = await generate_multi_person_video.remote.aio(
-                prompt=request.prompt,
-                image_key=image_key,
-                audio_keys=audio_keys,
-                sample_steps=request.options.sample_steps,
-                audio_type=request.options.audio_type,
-                audio_cfg=request.options.audio_cfg,
-                color_correction=request.options.color_correction
-            )
+        # Import the CUDA functions
+        try:
+            from app_multitalk_cuda import generate_video_cuda, generate_multi_person_video
+            
+            # Call appropriate Modal function
+            if len(audio_keys) == 1:
+                # Single person video
+                result = await generate_video_cuda.remote.aio(
+                    prompt=request.prompt,
+                    image_key=image_key,
+                    audio_key=audio_keys[0],
+                    sample_steps=request.options.sample_steps
+                )
+            else:
+                # Multi-person video
+                result = await generate_multi_person_video.remote.aio(
+                    prompt=request.prompt,
+                    image_key=image_key,
+                    audio_keys=audio_keys,
+                    sample_steps=request.options.sample_steps,
+                    audio_type=request.options.audio_type,
+                    audio_cfg=request.options.audio_cfg,
+                    color_correction=request.options.color_correction
+                )
+        except ImportError:
+            # If CUDA app is not available, return an error
+            raise Exception("Video generation service not available. Please ensure the CUDA app is deployed.")
         
         # Check if generation was successful
         if not result.get("success"):
